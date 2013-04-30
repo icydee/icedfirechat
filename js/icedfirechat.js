@@ -16,15 +16,16 @@ jQuery.icedfirechat = function() {
   }
 
   function update_users() {
-    var html = '';
-    if (data.chat_person) {
-      for (var k in data.chat_person) {
-        html = html + "<p>"+data.chat_person[k].name+"</p>";
-      }
-    } else {
-      html = "<p>No-one is currently registered!</p>";
-    }
-    jQuery('#icedfirechat .ifc_users').html(html);
+    jQuery('#icedfirechat #ifc_users').jqGrid({
+      datatype : 'clientSide',
+      colNames : ['id', 'name','Alliance'],
+      colModel : [
+        {name : 'id', index : 'id', width: 55, sorttype: 'int'},
+        {name : 'name', index : 'name', width: 100},
+        {name : 'alliance', index : 'alliance', width: 200}
+      ],
+      caption : 'List of all Users'
+    });
   }
 
   return {
@@ -44,28 +45,45 @@ jQuery.icedfirechat = function() {
       jQuery("#icedfirechat").dialog({
         dialogClass : "no-close",
         closeOnEscape : false,
-        height : 300,
-        width : 400,
+        height : 600,
+        width : 500,
         title : "Iced Fire Chat"
       });
-      var chat_headers = 
-        "<div class='ifc_headers'>"+
-        "  <h3>Users</h3><div class='ifc_users'>Users status</div>"+
-        "  <h3>Chat Rooms</h3><div class='ifc_chat_rooms'>Chat rooms go here</div>";
-      sel.html(chat_headers);
-      sel_content = jQuery('#icedfirechat .ifc_headers');
-      sel_content.accordion({ active : 1, collapsible: true, heightStyle : "fill" });
-      sel.on('dialogresize', function( event, ui ) {
-        sel_content.accordion('refresh');
+      var chat_div =
+        "<div class='ifc_main'>"+
+        "  <table id='ifc_users'></table><div id='ifc_users_pager'></div>"+
+        "  <table id='ifc_rooms'></table><div id='ifc_rooms_pager'></div>"+
+        "</div>";
+      jQuery('#icedfirechat').html(chat_div);
+
+
+
+      // 
+      // Create and manage list of all users
+      //
+      jQuery('#ifc_users').jqGrid({
+        datatype : 'clientSide',
+        colNames : ['name','Alliance','On Line','Last Seen'],
+        colModel : [
+          {name : 'name', index : 'name', width: 100},
+          {name : 'alliance', index : 'alliance', width: 200},
+          {name : 'on_line', index : 'on_line', width: 100},
+          {name : 'last_seen', index : 'last_seen', width: 200},
+        ],
+        caption : 'People',
+        pager : '#ifc_users_pager',
+        rowNum : 5,
+        viewrecords : true
       });
-      
+      jQuery('#ifc_users').jqGrid('navGrid','#ifc_users_pager',{del:false,add:false,edit:false});
+
       var fire_person_ref = data.fire_ref.child('person');
       fire_person_ref.on('child_added', function(childSnapshot, prevChildName) {
         var child = childSnapshot.val();
         if (child) {
           data.chat_person['ID:'+child.id] = child;
           debug("person "+child.id+" added!");
-          update_users();
+          jQuery('#ifc_users').addRowData( child.id, {name : child.name, alliance : child.alliance, on_line : child.on_line, last_seen : child.last_seen}, 'last');
         }
       });
       fire_person_ref.on('child_changed', function(childSnapshot, prevChildName) {
@@ -73,9 +91,56 @@ jQuery.icedfirechat = function() {
         if (child) {
           data.chat_person['ID:'+child.id] = child;
           debug("person "+child.id+" changed!");
-          update_users();
+          jQuery('#ifc_users').setRowData( child.id, {name : child.name, alliance : child.alliance, on_line : child.on_line, last_seen : child.last_seen});
         }
       });
+      fire_person_ref.on('child_removed', function(childSnapshot, prevChildName) {
+        var child = childSnapshot.val();
+        if (child) {
+          data.chat_person['ID:'+child.id] = child;
+          jQuery('#ifc_users').delRowData( child.id);
+        }
+      });
+
+      //
+      // Create and manage list of all chat rooms
+      //
+      jQuery('#ifc_rooms').jqGrid({
+        datatype : 'clientSide',
+        colNames : ['name','Status','visitors'],
+        colModel : [
+          {name : 'roomname', index : 'roomname', width: 150},
+          {name : 'status', index : 'status', width: 100},
+          {name : 'visitors', index : 'visitors', width: 100}
+        ],
+        caption : 'Chat Rooms',
+        pager : '#ifc_rooms_pager',
+        rowNum : 5,
+        viewrecords : true
+      });
+      jQuery('#ifc_rooms').jqGrid('navGrid','#ifc_rooms_pager',{del:false,add:false,edit:false});
+
+      var fire_room_ref = data.fire_ref.child('rooms');
+      fire_room_ref.on('child_added', function(childSnapshot, prevChildName) {
+        var child = childSnapshot.val();
+        if (child) {
+          debug("Room name ["+childSnapshot.name()+"]");
+          jQuery('#ifc_rooms').addRowData( childSnapshot.name(), {roomname : child.roomname, status : child.status, visitors : 1}, 'last');
+        }
+      });
+      fire_room_ref.on('child_changed', function(childSnapshot, prevChildName) {
+        var child = childSnapshot.val();
+        if (child) {
+          jQuery('#ifc_rooms').setRowData( childSnapshot.name(), {roomname : child.roomname, status : child.status, visitors : 1});
+        }
+      });
+      fire_room_ref.on('child_removed', function(childSnapshot, prevChildName) {
+        var child = childSnapshot.val();
+        if (child) {
+          jQuery('#ifc_rooms').delRowData( childSnapshot.name());
+        }
+      });
+
     },
     log_in : function () {
       var fire_person_ref = data.fire_ref.child('person');
