@@ -15,20 +15,11 @@ jQuery.icedfirechat = function() {
     }
   }
 
-  function update_users() {
-    jQuery('#icedfirechat #ifc_users').jqGrid({
-      datatype : 'clientSide',
-      colNames : ['id', 'name','Alliance'],
-      colModel : [
-        {name : 'id', index : 'id', width: 55, sorttype: 'int'},
-        {name : 'name', index : 'name', width: 100},
-        {name : 'alliance', index : 'alliance', width: 200}
-      ],
-      caption : 'List of all Users'
-    });
-  }
-
   return {
+
+    //
+    // Set everything up
+    //
     init : function( options ) {
       data = options;
       data.fire_ref = new Firebase(data.url);
@@ -55,8 +46,6 @@ jQuery.icedfirechat = function() {
         "  <table id='ifc_rooms'></table><div id='ifc_rooms_pager'></div>"+
         "</div>";
       jQuery('#icedfirechat').html(chat_div);
-
-
 
       // 
       // Create and manage list of all users
@@ -122,26 +111,36 @@ jQuery.icedfirechat = function() {
 
       var fire_room_ref = data.fire_ref.child('rooms');
       fire_room_ref.on('child_added', function(childSnapshot, prevChildName) {
-        var child = childSnapshot.val();
-        if (child) {
-          debug("Room name ["+childSnapshot.name()+"]");
-          jQuery('#ifc_rooms').addRowData( childSnapshot.name(), {roomname : child.roomname, status : child.status, visitors : 1}, 'last');
+        var room = childSnapshot.val();
+        if (room) {
+          var visitors = childSnapshot.child('visitors').numChildren();
+          jQuery('#ifc_rooms').addRowData( childSnapshot.name(), {roomname : room.roomname, status : room.status, visitors : visitors}, 'last');
         }
       });
       fire_room_ref.on('child_changed', function(childSnapshot, prevChildName) {
-        var child = childSnapshot.val();
-        if (child) {
-          jQuery('#ifc_rooms').setRowData( childSnapshot.name(), {roomname : child.roomname, status : child.status, visitors : 1});
+        var room = childSnapshot.val();
+        if (room) {
+          var visitors = childSnapshot.child('visitors').numChildren();
+          jQuery('#ifc_rooms').setRowData( childSnapshot.name(), {roomname : room.roomname, status : room.status, visitors : visitors});
         }
       });
       fire_room_ref.on('child_removed', function(childSnapshot, prevChildName) {
-        var child = childSnapshot.val();
-        if (child) {
+        var room = childSnapshot.val();
+        if (room) {
+          var visitors = childSnapshot.child('visitors').numChildren();
           jQuery('#ifc_rooms').delRowData( childSnapshot.name());
         }
       });
 
     },
+
+
+
+
+
+    //
+    // Handle connect, and disconnect business
+    // 
     log_in : function () {
       var fire_person_ref = data.fire_ref.child('person');
       var person = {
@@ -154,18 +153,15 @@ jQuery.icedfirechat = function() {
       person.on_line = 1;
       fire_person_ref.child(data.user.empire_id).set(person);
     },
+
+
+
+    //
+    // Manual disconnection
+    // 
     log_out : function () {
       var fire_person_ref = data.fire_ref.child('person/'+data.user.empire_id);
       fire_person_ref.child('on_line').set(0);
-    },
-    all_online_status : function () {
-      if (data.chat_person) {
-        for (var k in data.chat_person) {
-          debug("key :"+k);
-        }
-      } else {
-        debug('There are currently *no* people registered');
-      }
     }
   };
 };
