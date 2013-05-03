@@ -109,7 +109,7 @@ jQuery.icedfirechat = function() {
       });
       jQuery('#ifc_rooms').jqGrid('navGrid','#ifc_rooms_pager',{del:false,add:false,edit:false});
 
-      var fire_room_ref = data.fire_ref.child('rooms');
+      var fire_room_ref = data.fire_ref.child('room');
       fire_room_ref.on('child_added', function(childSnapshot, prevChildName) {
         var room = childSnapshot.val();
         if (room) {
@@ -160,8 +160,10 @@ jQuery.icedfirechat = function() {
     // Manual disconnection
     // 
     log_out : function () {
-      var fire_person_ref = data.fire_ref.child('person/'+data.user.empire_id);
-      fire_person_ref.child('on_line').set(0);
+      if (data.fire_ref) {
+        var fire_person_ref = data.fire_ref.child('person/'+data.user.empire_id);
+        fire_person_ref.child('on_line').set(0);
+      }
     }
   };
 };
